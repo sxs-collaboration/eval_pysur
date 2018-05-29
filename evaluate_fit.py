@@ -230,11 +230,11 @@ def getFitEvaluator(res):
         return res['coefs'].dot(basisFuncEvals)
 
     def gprfitEvaluator(x):
-        gpr_predictObject = GPRPredictor(res)
         GPR_eval  = gpr_predictObject.GPR_predict([x])
         return GPR_eval['y'][0] # This probaly needs to change if len(x) != 1
 
     if 'fitType' in res and res['fitType'] == 'GPR':
+        gpr_predictObject = GPRPredictor(res)
         return gprfitEvaluator
     else:
         return greedyfitEvaluator
@@ -246,11 +246,11 @@ def getFitEvaluator(res):
 def getGPRErrorEvaluator(res):
 
     def gprErrEval(x):
-        gpr_predictObject = GPRPredictor(res)
         GPR_eval  = gpr_predictObject.GPR_predict([x])
         return GPR_eval['y_gprErr'][0]
 
     if 'fitType' in res and res['fitType'] == 'GPR':
+        gpr_predictObject = GPRPredictor(res)
         return gprErrEval
     else:
         raise Exception('getGPRErrorPrediction requires fitType=GPR.')
