@@ -4,12 +4,15 @@ from math import pi, ceil
 import warnings
 from random import sample as rand_sample
 
-try:
-    from sklearn import gaussian_process
-    from sklearn.gaussian_process import GaussianProcessRegressor
-    from sklearn import linear_model
-except:
-    print "No sklearn, cannot evaluate GPR fits."
+from distutils.version import StrictVersion
+import sklearn
+if not StrictVersion(sklearn.__version__) >= StrictVersion('0.19.1'):
+    raise Exception('sklearn needs to be at least version 0.19.1.'
+        ' See http://scikit-learn.org/stable/install.html for instructions.')
+
+from sklearn import gaussian_process
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn import linear_model
 
 #######################     GPR fit functions       #######################
 
