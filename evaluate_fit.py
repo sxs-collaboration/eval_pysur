@@ -4,12 +4,6 @@ from math import pi, ceil
 import warnings
 from random import sample as rand_sample
 
-from distutils.version import StrictVersion
-import sklearn
-if not StrictVersion(sklearn.__version__) >= StrictVersion('0.19.1'):
-    raise Exception('sklearn needs to be at least version 0.19.1.'
-        ' See http://scikit-learn.org/stable/install.html for instructions.')
-
 from sklearn import gaussian_process
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn import linear_model
@@ -36,6 +30,15 @@ class GPRPredictor:
         Class to evaluate GPR fits constructed by GPRFitter class in
         pySurrogate/fit_gpr.py
         """
+
+        # 6/2018: keeping this test at class-level scope since the
+        # bleeding-edge sklearn package isn't needed for the other models.
+        # In the future, this check can be removed entirely
+        from distutils.version import StrictVersion
+        import sklearn
+        if not StrictVersion(sklearn.__version__) >= StrictVersion('0.19.1'):
+            raise Exception('sklearn needs to be at least version 0.19.1. See '
+                'http://scikit-learn.org/stable/install.html for instructions.')
 
         self.data_mean = res['data_mean']
         self.data_std = res['data_std']
