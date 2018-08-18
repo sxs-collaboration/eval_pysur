@@ -260,3 +260,16 @@ def getGPRErrorEvaluator(res):
         return gprErrEval
     else:
         raise Exception('getGPRErrorPrediction requires fitType=GPR.')
+
+
+def getGPRFitAndErrorEvaluator(res):
+
+    def gprEval(x):
+        GPR_eval  = gpr_predictObject.GPR_predict([x])
+        return GPR_eval['y'][0], GPR_eval['y_gprErr'][0]
+
+    if 'fitType' in res and res['fitType'] == 'GPR':
+        gpr_predictObject = GPRPredictor(res)
+        return gprEval
+    else:
+        raise Exception('getGPRErrorPrediction requires fitType=GPR.')
