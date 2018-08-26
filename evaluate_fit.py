@@ -134,8 +134,9 @@ class GPRPredictor:
         """
 
         # Get fit prediction and error estimate for normalized data
-        y_normalized_pred, err_normalized_pred = self.GPR_obj.predict(x, \
-            return_std=True)
+        y_normalized_pred, cov_normalized_pred = self.GPR_obj.predict(x, \
+            return_cov=True)
+        err_normalized_pred = np.sqrt(cov_normalized_pred.flatten())
 
         # Reconstruct to get un-normalized prediction
         y_pred, err_pred = self._reconstruct_normalized_data( \
