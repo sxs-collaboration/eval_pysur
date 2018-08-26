@@ -125,7 +125,7 @@ class GPRPredictor:
         return data_normed * self.data_std + self.data_mean, \
             data_normed_err * self.data_std
 
-    def GPR_predict(self, x):
+    def GPR_predict(self, x, estimate_err=False):
         """
         Evaluates a GPR fit.
         First evalutates the GPR fit to get the prediction for the normalized
@@ -134,9 +134,14 @@ class GPRPredictor:
         """
 
         # Get fit prediction and error estimate for normalized data
-        y_normalized_pred, cov_normalized_pred = self.GPR_obj.predict(x, \
-            return_cov=True)
-        err_normalized_pred = np.sqrt(cov_normalized_pred.flatten())
+        fit_res = self.GPR_obj.predict(x, return_cov=estimate_err)
+
+        if estimate_err:
+            y_normalized_pred, cov_normalized_pred = fit_res
+            err_normalized_pred = np.sqrt(cov_normalized_pred.flatten())
+        else:
+            y_normalized_pred = fit_res
+            err_normalized_pred = fit_res * 0
 
         # Reconstruct to get un-normalized prediction
         y_pred, err_pred = self._reconstruct_normalized_data( \
@@ -148,10 +153,13 @@ class GPRPredictor:
             # doing the fit
             y_pred = y_pred + self.linearModel.predict(x)
 
+
         val_dict = {
             'y': y_pred,
-            'y_gprErr': err_pred,
         }
+
+        if estimate_err:
+            val_dict['y_gprErr'] = err_pred
 
         return val_dict
 
@@ -248,12 +256,12 @@ def getFitEvaluator(res):
 
 
 # Evalutates the GPR error estimation function.
-# TODO: Currently this just reevaluates the fit, consider incorporating into 
+# TODO: Currently this just reevaluates the fit, consider incorporating into
 # getFitEvaluator() somehow
 def getGPRErrorEvaluator(res):
 
     def gprErrEval(x):
-        GPR_eval  = gpr_predictObject.GPR_predict([x])
+        GPR_eval  = gpr_predictObject.GPR_predict([x], estimate_err=True)
         return GPR_eval['y_gprErr'][0]
 
     if 'fitType' in res and res['fitType'] == 'GPR':
@@ -266,7 +274,7 @@ def getGPRErrorEvaluator(res):
 def getGPRFitAndErrorEvaluator(res):
 
     def gprEval(x):
-        GPR_eval  = gpr_predictObject.GPR_predict([x])
+        GPR_eval  = gpr_predictObject.GPR_predict([x], estimate_err=True)
         return GPR_eval['y'][0], GPR_eval['y_gprErr'][0]
 
     if 'fitType' in res and res['fitType'] == 'GPR':
