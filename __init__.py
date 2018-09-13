@@ -1,1 +1,1 @@
-import evaluate_fit
+from . import evaluate_fit
