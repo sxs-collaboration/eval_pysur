@@ -31,15 +31,6 @@ class GPRPredictor:
         pySurrogate/fit_gpr.py
         """
 
-        # 6/2018: keeping this test at class-level scope since the
-        # bleeding-edge sklearn package isn't needed for the other models.
-        # In the future, this check can be removed entirely
-        from distutils.version import StrictVersion
-        import sklearn
-        if not StrictVersion(sklearn.__version__) >= StrictVersion('0.19.1'):
-            raise Exception('sklearn needs to be at least version 0.19.1. See '
-                'http://scikit-learn.org/stable/install.html for instructions.')
-
         self.data_mean = res['data_mean']
         self.data_std = res['data_std']
 
