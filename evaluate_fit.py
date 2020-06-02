@@ -14,7 +14,8 @@ from sklearn import linear_model
 # NOTE: If you get errors like "AttributeError: 'GaussianProcessRegressor'
 # object has no attribute -----", try adding that attribute to
 # GPR_SAVE_ATTRS_DICT
-GPR_SAVE_ATTRS_DICT = ['kernel_', 'X_train_', 'alpha_', '_y_train_mean', 'L_']
+GPR_SAVE_ATTRS_DICT = ['kernel_', 'X_train_', 'alpha_',
+        '_y_train_mean', '_y_train_std', 'L_']
 
 # These are the things we need to save from a LinearRegression fit in order
 # to reproduce it
@@ -89,6 +90,17 @@ class GPRPredictor:
         for attr in GPR_SAVE_ATTRS_DICT:
             if attr == 'kernel_':
                 param = self._set_kernel_params(gp_params[attr])
+            elif attr == '_y_train_std':
+                # In scikit-learn versions before 0.23, there was no
+                # _y_train_std, which is the same as saying _y_train_std=1. If
+                # this fit was constructed using an earlier version of
+                # scikit-learn, it would not have an attribute called
+                # _y_train_std, so we just set it to 1. This way, the fit can
+                # be evaluated with any version of scikit-learn.
+                if '_y_train_std' not in gp_params.keys():
+                    param = 1
+                else:
+                    param = gp_params[attr]
             else:
                 param = gp_params[attr]
             setattr(gp_obj, attr, param)
