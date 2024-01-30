@@ -8,6 +8,8 @@ from sklearn import gaussian_process
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn import linear_model
 
+import tensorflow.keras as tfkeras
+
 #######################     GPR fit functions       #######################
 
 # These are the things we need to save from a GPR fit in order to reproduce it
@@ -166,8 +168,109 @@ class GPRPredictor:
 
         return val_dict
 
+# -------------------------------------------------------------------------
+class ANNPredictor:
+    def __init__(self, res, **kwargs):
+        """
+        Class to evaluate ANN fits constructed by ANNFitter class in
+        pySurrogate/fit_ann.py
+        """
 
-#######################     Greedt fit functions       #######################
+        self.data_mean = res['data_mean']
+        self.data_std = res['data_std']
+
+        # load trained ANN
+        self.ANN_obj = tfkeras.Sequential()
+        self.ANN_obj.add(tfkeras.layers.InputLayer(input_shape=(res['numInputDims'],)))
+        optimizer_dict = {
+            'class_name' : res['optimizer'],
+            'config': {
+                'learning_rate': res['learningRate'],
+                'name': res['optimizer']
+            },
+            'module': 'keras.optimizers'
+        }
+        for layer in range(res['numHiddenLayers']):
+            self.ANN_obj.add(tfkeras.layers.Dense(res['nodesPerLayer'], activation=res['activationFunc']))
+            #model.add(layers.Dropout(0.5))
+        self.ANN_obj.add(tfkeras.layers.Dense(res['numOutputDims'], activation='linear'))
+
+        self.ANN_obj.compile(
+        # Optimization algorithm, specify learning rate
+        optimizer= tfkeras.utils.deserialize_keras_object(optimizer_dict),
+        # Loss function
+        loss = tfkeras.losses.deserialize(res['lossFunc']),
+        # Diagnostic quantities
+        metrics=[tfkeras.metrics.MeanSquaredError()]
+        )
+
+        # Load the weights which were as a result of the training
+        self.ANN_obj.set_weights(res['ann_trained_weights'])
+
+        # load LinearRegression fit
+        lin_reg_params = res['lin_reg_params']
+        if lin_reg_params is not None:
+            self.linearModel = linear_model.LinearRegression()
+            self._set_lin_reg_params(self.linearModel, lin_reg_params)
+        else:
+            self.linearModel = None
+
+
+    def _set_lin_reg_params(self, lr_obj, lr_params):
+        """ Sets the fitted parameters for a LinearRegression object.
+            This can be used to load a previously constructed fit.
+
+            NOTE: If you get errors like:
+            "AttributeError: 'LinearRegression' object has
+            no attribute -----",
+            try adding that attribute to LINREG_SAVE_ATTRS_DICT
+        """
+        for attr in LINREG_SAVE_ATTRS_DICT:
+            param = lr_params[attr]
+            setattr(lr_obj, attr, param)
+
+
+    def _reconstruct_normalized_data(self, data_normed, data_normed_err):
+        """
+        The inverse operation of 'ANNFitter._normalize()'
+        Returns the reconstructed data and error estimate.
+        """
+        return data_normed * self.data_std + self.data_mean, \
+            data_normed_err * self.data_std
+
+    def ANN_predict(self, x, estimate_err=False, verbose=False):
+        """
+        Evaluates an ANN fit.
+        First evalutates the ANN fit to get the prediction for the normalized
+        data. Then reconstructs the un-normalized data.
+        Finally adds the linear model fit if it was done in ANNFitter.
+        """
+
+        # Get fit prediction and error estimate for normalized data
+        fit_res = self.ANN_obj.predict(x, verbose=verbose)
+
+        y_normalized_pred = fit_res
+        err_normalized_pred = fit_res * 0
+
+        # Reconstruct to get un-normalized prediction
+        y_pred, err_pred = self._reconstruct_normalized_data( \
+                                            y_normalized_pred, \
+                                            err_normalized_pred)
+
+        if self.linearModel is not None:
+            # Add the linear prediction that was subtracted before
+            # doing the fit
+            y_pred = y_pred + self.linearModel.predict(x)
+
+
+        val_dict = {
+            'y': y_pred,
+        }
+
+        return val_dict
+
+
+#######################     Greedy fit functions       #######################
 class BasisFunction:
     def __init__(self, name, func, minX, maxX):
         """name: A name (for example, 'cosine')
@@ -251,9 +354,16 @@ def getFitEvaluator(res):
         GPR_eval  = gpr_predictObject.GPR_predict([x])
         return GPR_eval['y'][0] # This probaly needs to change if len(x) != 1
 
+    def annfitEvaluator(x):
+        ANN_eval  = ann_predictObject.ANN_predict([x])
+        return ANN_eval['y'][0] # This probaly needs to change if len(x) != 1
+
     if 'fitType' in res and res['fitType'] == 'GPR':
         gpr_predictObject = GPRPredictor(res)
         return gprfitEvaluator
+    elif 'fitType' in res and res['fitType'] == 'ANN':
+        ann_predictObject = ANNPredictor(res)
+        return annfitEvaluator
     else:
         return greedyfitEvaluator
 
