@@ -173,7 +173,7 @@ class ANNPredictor:
     def __init__(self, res, **kwargs):
         """
         Class to evaluate ANN fits constructed by ANNFitter class in
-        pySurrogate/fit_ann.py
+        pySurrogate/fit_ann_tensorflow.py
         """
 
         self.data_mean = res['data_mean']
@@ -361,7 +361,7 @@ def getFitEvaluator(res):
     if 'fitType' in res and res['fitType'] == 'GPR':
         gpr_predictObject = GPRPredictor(res)
         return gprfitEvaluator
-    elif 'fitType' in res and res['fitType'] == 'ANN':
+    elif 'fitType' in res and res['fitType'] == 'ANNTensorflow':
         ann_predictObject = ANNPredictor(res)
         return annfitEvaluator
     else:
