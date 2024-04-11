@@ -8,7 +8,10 @@ from sklearn import gaussian_process
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn import linear_model
 
-import tensorflow.keras as tfkeras
+try:
+    import tensorflow.keras as tfkeras
+except ImportError:
+    warnings.warn('Tensorflow not found. ANNTensorflow fit type will not work.')
 
 #######################     GPR fit functions       #######################
 
