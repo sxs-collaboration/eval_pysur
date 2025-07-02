@@ -97,10 +97,7 @@ class GPRPredictor:
                 # scikit-learn, it would not have an attribute called
                 # _y_train_std, so we just set it to 1. This way, the fit can
                 # be evaluated with any version of scikit-learn.
-                if '_y_train_std' not in gp_params.keys():
-                    param = 1
-                else:
-                    param = gp_params[attr]
+                param = gp_params.get('_y_train_std', 1)
             else:
                 param = gp_params[attr]
             setattr(gp_obj, attr, param)
