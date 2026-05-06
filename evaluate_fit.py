@@ -124,6 +124,36 @@ class GPRPredictor:
         """
         return data_normed * self.data_std + self.data_mean, \
             data_normed_err * self.data_std
+            
+    def GPR_predict_fast(self, x):
+        """
+        Fast single-point GPR mean prediction, bypassing sklearn overhead.
+        Kernel structure assumed: ConstantKernel * RBF + WhiteKernel.
+        Also assumes data was normalized, and that a linear fit was subtracted
+        before doing the GPR fit.
+        """
+        gpr = self.GPR_obj
+        product_kernel    = gpr.kernel_.k1
+        const_alpha       = product_kernel.k1.constant_value * gpr.alpha_
+        inv_length_scale  = 1.0 / product_kernel.k2.length_scale
+        x_train = gpr.X_train_
+        
+        # Inline implementation of scikit-learn GPR
+        diff     = x - x_train # shape (n_train, n_dim)
+        diff     = diff * inv_length_scale # shape (n_dim,)
+        sq_dists = np.einsum('ij,ij->i', diff, diff)
+        rbf_vec  = np.exp(-0.5 * sq_dists) # shape (n_train,)
+
+        y_norm = rbf_vec @ const_alpha # alpha shape (n_train,)
+        y_norm = gpr._y_train_std * y_norm + gpr._y_train_mean
+
+        # Un-do normalization
+        y_pred = y_norm * self.data_std + self.data_mean
+
+        # Add linear model
+        y_pred += x @ self.linearModel.coef_ + self.linearModel.intercept_
+
+        return {'y': y_pred}
 
     def GPR_predict(self, x, estimate_err=False):
         """
@@ -247,10 +277,20 @@ def getFitEvaluator(res):
     def gprfitEvaluator(x):
         GPR_eval  = gpr_predictObject.GPR_predict([x])
         return GPR_eval['y'][0] # This probaly needs to change if len(x) != 1
+    
+    def gprfastfitEvaluator(x):
+        GPR_eval  = gpr_predictObject.GPR_predict_fast([x])
+        return GPR_eval['y'][0] # This probaly needs to change if len(x) != 1
 
-    if 'fitType' in res and res['fitType'] == 'GPR':
-        gpr_predictObject = GPRPredictor(res)
-        return gprfitEvaluator
+    if 'fitType' in res:
+        if res['fitType'] == 'GPR':
+            gpr_predictObject = GPRPredictor(res)
+            return gprfitEvaluator
+        elif res['fitType'] == 'GPR_fast':
+            gpr_predictObject = GPRPredictor(res)
+            return gprfastfitEvaluator
+        else:
+            raise Exception('fitType {} not recognized.'.format(res['fitType']))
     else:
         return greedyfitEvaluator
 
